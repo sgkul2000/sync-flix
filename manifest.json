@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "SyncFlix",
+  "version": "1.0.0",
+  "description": "Watch streaming services in sync with friends",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.netflix.com/*",
+    "*://*.youtube.com/*",
+    "*://*.hotstar.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "./src/popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.netflix.com/*"],
+      "js": ["./src/js/platforms/netflix/netflix.js"],
+      "run_at": "document_end",
+      "type": "module"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["src/js/platforms/youtube/youtube.js"],
+      "run_at": "document_end",
+      "type": "module"
+    },
+    {
+      "matches": ["*://*.hotstar.com/*"],
+      "js": ["./src/js/platforms/hotstar/hotstar.js"],
+      "run_at": "document_end",
+      "type": "module"
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": [
+      "*.js"
+    ],
+    "matches": ["<all_urls>"]
+  }]
+}

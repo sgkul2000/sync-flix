@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SyncFlix</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SyncFlix</h1>
+            <!-- Add inside the header div -->
+            <div class="connection-status">
+                <span class="status-dot" id="connectionDot"></span>
+                <span id="connectionText">Disconnected</span>
+                <span id="latencyText"></span>
+            </div>
+
+            <!-- Add inside active-session div, after session-info -->
+            <div class="participants-list">
+                <h3>Participants</h3>
+                <ul id="participantsList"></ul>
+            </div>
+
+            <!-- Add at the bottom of container div -->
+            <div id="toastContainer" class="toast-container"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="no-session" id="noSessionView">
+                <div class="action-buttons">
+                    <button id="createSession" class="primary-button">Create Watch Party</button>
+                    <button id="joinSession" class="secondary-button">Join Watch Party</button>
+                </div>
+            </div>
+
+            <div class="active-session hidden" id="activeSessionView">
+                <div class="session-info">
+                    <h2>Active Watch Party</h2>
+                    <p>Session ID: <span id="sessionId"></span></p>
+                    <p>Participants: <span id="participantCount">1</span></p>
+                </div>
+                <button id="copyInvite" class="secondary-button">Copy Invite Link</button>
+                <button id="leaveSession" class="danger-button">Leave Session</button>
+            </div>
+
+            <div class="join-session hidden" id="joinSessionView">
+                <h2>Join Watch Party</h2>
+                <input type="text" id="sessionInput" placeholder="Enter session ID or link">
+                <div class="action-buttons">
+                    <button id="confirmJoin" class="primary-button">Join</button>
+                    <button id="cancelJoin" class="secondary-button">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button id="settingsButton" class="icon-button">⚙️</button>
+            <span id="username"></span>
+        </div>
+    </div>
+    <script src="../js/lib/peerjs.min.js"></script>
+    <script src="popup.js" type="module"></script>
+</body>
+</html>

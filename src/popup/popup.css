@@ -1,0 +1,231 @@
+body {
+    width: 320px;
+    margin: 0;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #333;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 24px;
+    color: #ff4d4d;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #666;
+}
+
+.status-indicator.connected {
+    background: #4CAF50;
+}
+
+.main-content {
+    flex: 1;
+    min-height: 200px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.primary-button {
+    background: #ff4d4d;
+    color: white;
+}
+
+.primary-button:hover {
+    background: #ff3333;
+}
+
+.secondary-button {
+    background: #333;
+    color: white;
+}
+
+.secondary-button:hover {
+    background: #444;
+}
+
+.danger-button {
+    background: #dc3545;
+    color: white;
+}
+
+.danger-button:hover {
+    background: #c82333;
+}
+
+.session-info {
+    margin-bottom: 20px;
+}
+
+.session-info h2 {
+    margin: 0 0 12px 0;
+}
+
+.session-info p {
+    margin: 8px 0;
+    color: #ccc;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 12px 0;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #222;
+    color: white;
+    box-sizing: border-box;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid #333;
+}
+
+.icon-button {
+    background: none;
+    padding: 8px;
+    font-size: 16px;
+}
+
+.hidden {
+    display: none;
+}
+
+#username {
+    color: #ccc;
+    font-size: 14px;
+}
+
+/* Add new styles */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #999;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #666;
+}
+
+.status-dot.connected { background: #4CAF50; }
+.status-dot.connecting { background: #FFC107; }
+.status-dot.disconnected { background: #F44336; }
+
+#latencyText {
+    font-size: 11px;
+    color: #666;
+}
+
+.participants-list {
+    margin: 16px 0;
+    padding: 12px;
+    background: #222;
+    border-radius: 6px;
+}
+
+.participants-list h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #ccc;
+}
+
+.participants-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.participant-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+}
+
+.participant-item:last-child {
+    border-bottom: none;
+}
+
+.participant-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.host-badge {
+    background: #ff4d4d;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+}
+
+.toast-container {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: #333;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    animation: slideIn 0.3s ease;
+    pointer-events: auto;
+}
+
+.toast.error { background: #dc3545; }
+.toast.success { background: #28a745; }
+
+@keyframes slideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
