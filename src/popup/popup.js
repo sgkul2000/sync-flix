@@ -1,16 +1,19 @@
-import NotificationService from '../js/services/notificationService.js';
+// import NotificationService from '../js/services/notificationService.js';
 import NotificationManager from '../js/components/NotificationManager.js';
 
+var popup
+var notificationService = new NotificationService
 document.addEventListener('DOMContentLoaded', () => {
-    const popup = new PopupManager();
+    popup = new PopupManager();
 });
 
 class PopupManager {
     constructor() {
+        
         // Add new properties
         this.connectionStatus = 'disconnected';
         this.latency = 0;
-        this.participants = new Map();
+        this.username = '';
         
         this.currentView = 'noSession';
         this.setupEventListeners();
@@ -19,17 +22,25 @@ class PopupManager {
         // Start connection monitoring
         this.startConnectionMonitoring();
         this.notificationManager = new NotificationManager();
-        NotificationService.addListener((notification) => {
+        notificationService.addListener((notification) => {
             this.notificationManager.show(notification);
         });
+
+        this.checkCurrentSession()
+
+        chrome.storage.local.get(["username"]).then((result) => {
+            console.log("Username loaded: ", result.username)
+            this.username = result.username
+        }).catch(err => {
+            console.error("Failed to fetch username", err)
+            this.showView('noSession')
+        })
     }
 
     startConnectionMonitoring() {
         chrome.runtime.onMessage.addListener((message) => {
             if (message.type === 'CONNECTION_STATUS') {
                 this.updateConnectionStatus(message.status, message.latency);
-            } else if (message.type === 'PARTICIPANTS_UPDATE') {
-                this.updateParticipants(message.participants);
             }
         });
     }
@@ -47,30 +58,6 @@ class PopupManager {
         latencyText.textContent = latency ? `${latency}ms` : '';
     }
 
-    updateParticipants(participants) {
-        const list = document.getElementById('participantsList');
-        list.innerHTML = '';
-
-        participants.forEach(participant => {
-            const item = document.createElement('div');
-            item.className = 'participant-item';
-            
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'participant-name';
-            nameDiv.textContent = participant.username;
-            
-            if (participant.isHost) {
-                const hostBadge = document.createElement('span');
-                hostBadge.className = 'host-badge';
-                hostBadge.textContent = 'HOST';
-                nameDiv.appendChild(hostBadge);
-            }
-
-            item.appendChild(nameDiv);
-            list.appendChild(item);
-        });
-    }
-
     showToast(message, type = 'info') {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
@@ -85,117 +72,110 @@ class PopupManager {
         }, 3000);
     }
 
-    async checkCurrentSession() {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        console.log('Checking current session for tab:', tab); // Debug log 
-        
-        const response = await chrome.runtime.sendMessage({
-            type: 'GET_SESSION_INFO',
-            data: { tabId: tab.id }
+    checkCurrentSession() {
+        let self = this
+        chrome.tabs.query({currentWindow: true, active: true}, async (tabs) => {
+            var activeTab = tabs[0];
+            let response = await chrome.tabs.sendMessage(activeTab.id, {
+                type: 'GET_SESSION_INFO',
+            });
+            self.updateSessionInfo({
+                id: response.id,
+                isHost: response.isHost
+            });
+            self.showView('activeSession');
         });
-
-        console.log('Check session response:', response); // Debug log
-
-        if (response && response.success) {
-            console.log('Session info:', response.session); // Debug log
-            this.updateSessionInfo(response.session);
-            this.showView('activeSession');
-        } else {
-            console.log('No active session found'); // Debug log
-            this.showView('noSession');
-        }
     }
 
     updateSessionInfo(session) {
-        console.log('Updating session info:', session); // Debug log
         if (!session) return;
         
         const sessionIdElement = document.getElementById('sessionId');
-        const participantCountElement = document.getElementById('participantCount');
         
         if (sessionIdElement) sessionIdElement.textContent = session.id;
-        if (participantCountElement) participantCountElement.textContent = session.participantCount;
     }
 
-    async createSession() {
-
-        var peer = new Peer();
-        peer.on('open', function(id) {
-            console.log('My peer ID is: ' + id);
-            this.updateSessionInfo({
-                id: id,
-                participantCount: 1,
-                isHost: true
+    async createSession(peerid) {
+        let response
+        let self = this
+        try {
+            chrome.tabs.query({currentWindow: true, active: true}, async (tabs) => {
+                var activeTab = tabs[0];
+                response = await chrome.tabs.sendMessage(activeTab.id, {
+                    type: 'CREATE_SESSION',
+                    peerid: peerid
+                });
+                self.updateSessionInfo({
+                    id: response.id,
+                    isHost: response.isHost
+                });
+                self.showView('activeSession');
             });
-            this.showView('activeSession');
-        }).on('error', function(err) {
-            NotificationService.error('Failed to create session: ', err);
-        });
-    }
-
-    async checkCurrentSession() {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        const response = await chrome.runtime.sendMessage({
-            type: 'GET_SESSION_INFO',
-            data: { tabId: tab.id }
-        });
-
-        if (response && response.success) {
-            this.updateSessionInfo(response.session);
-            this.showView('activeSession');
+        } catch(err) {
+            console.error("Failed to create session", err)
+            notificationService.error('Failed to create session: ', err);
+            return;
         }
     }
 
     // Replace showToast with this
     showNotification(message, type = 'info') {
-        NotificationService[type](message);
+        notificationService[type](message);
     }
 
     async joinSession() {
         const sessionInput = document.getElementById('sessionInput').value.trim();
         if (!sessionInput) {
-            NotificationService.error('Please enter a session ID');
+            notificationService.error('Please enter a session ID');
             return;
         }
 
         try {
-            const sessionId = this.extractSessionId(sessionInput);
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-            const response = await chrome.runtime.sendMessage({
-                type: 'JOIN_SESSION',
-                data: { 
-                    sessionId,
-                    tabId: tab.id
+            // const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            chrome.tabs.query({currentWindow: true, active: true}, async (tabs) => {
+                var activeTab = tabs[0];
+                let response = await chrome.tabs.sendMessage(activeTab.id, {
+                    type: 'JOIN_SESSION',
+                    id: sessionInput
+                });
+                if (response.success) {
+                    notificationService.success('Successfully joined session');
+                    this.showView('joinedSession');
+                    const partnersSessionIdElement = document.getElementById('counterSessionId');
+                    partnersSessionIdElement.textContent = sessionInput;
+                } else {
+                    notificationService.error(response.error || 'Failed to join session');
                 }
             });
         
-            if (response.success) {
-                NotificationService.success('Successfully joined session');
-                this.showView('activeSession');
-            } else {
-                NotificationService.error(response.error || 'Failed to join session');
-            }
         } catch (error) {
-            NotificationService.error('Connection error', error);
+            notificationService.error('Connection error', error);
         }
     }
 
-    // Update other methods to use NotificationService instead of showToast
+    // Update other methods to use notificationService instead of showToast
     async leaveSession() {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        let self = this
+        try {
+            // const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            chrome.tabs.query({currentWindow: true, active: true}, async (tabs) => {
+                var activeTab = tabs[0];
+                let response = await chrome.tabs.sendMessage(activeTab.id, {
+                    type: 'LEAVE_SESSION',
+                });
+                notificationService.success('Session ended');
+                this.showView('noSession');
+            });
         
-        await chrome.runtime.sendMessage({
-            type: 'END_SESSION',
-            tabId: tab.id
-        });
+        } catch (error) {
+            notificationService.error('Connection error', error);
+        }
 
-        this.showView('noSession');
+        
     }
 
     showView(viewName) {
-        const views = ['noSession', 'activeSession', 'joinSession'];
+        const views = ['noSession', 'activeSession', 'joinSession', "joinedSession"];
         views.forEach(view => {
             document.getElementById(`${view}View`).classList.toggle('hidden', view !== viewName);
         });
@@ -203,14 +183,14 @@ class PopupManager {
     }
 
     updateSessionInfo(session) {
-        document.getElementById('sessionId').textContent = session.id;
-        document.getElementById('participantCount').textContent = session.participantCount;
+        Array.from(document.getElementsByClassName("sessionId")).forEach(element => {
+            element.textContent = session.id;
+        })
     }
 
     async copyInviteLink() {
         const sessionId = document.getElementById('sessionId').textContent;
-        const inviteLink = `https://syncflix.app/join/${sessionId}`;
-        await navigator.clipboard.writeText(inviteLink);
+        await navigator.clipboard.writeText(sessionId);
         
         const copyButton = document.getElementById('copyInvite');
         copyButton.textContent = 'Copied!';
@@ -219,10 +199,16 @@ class PopupManager {
         }, 2000);
     }
 
-    extractSessionId(input) {
-        // Handle both direct IDs and invite links
-        const match = input.match(/\/join\/([a-zA-Z0-9]+)$/);
-        return match ? match[1] : input;
+    saveUsername() {
+        const username = document.getElementById('usernameInput').value.trim();
+        if (!username) {
+            notificationService.error('Please enter a username');
+            return;
+        }
+        chrome.storage.local.set({ "username": username }).then(() => {
+            notificationService.success('Username saved');
+            this.showView('activeSession');
+        })
     }
 
     openSettings() {
@@ -231,10 +217,10 @@ class PopupManager {
 
     setupEventListeners() {
         // Main action buttons
-        document.getElementById('createSession').addEventListener('click', () => {
-            console.log('Create session clicked'); // Debug log
-            this.createSession();
-        });
+        // document.getElementById('createSession').addEventListener('click', () => {
+        //     console.log('Create session clicked'); // Debug log
+        //     this.createSession();
+        // });
         
         document.getElementById('joinSession').addEventListener('click', () => {
             console.log('Join session clicked'); // Debug log
@@ -259,7 +245,12 @@ class PopupManager {
         
         document.getElementById('cancelJoin').addEventListener('click', () => {
             console.log('Cancel join clicked'); // Debug log
-            this.showView('noSession');
+            this.showView('activeSession');
+        });
+
+        document.getElementById('saveUsername').addEventListener('click', () => {
+            console.log('Save username clicked'); // Debug log
+            this.saveUsername()
         });
     }
 }

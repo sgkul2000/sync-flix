@@ -1,97 +1,94 @@
-import WebRTCService from './webrtc.js';
-
 class SyncManager {
     constructor() {
-        this.webrtc = new WebRTCService();
+        // this.webrtc = new WebRTCService();
         this.videoPlayer = null;
         this.syncThreshold = 2000;
         this.sessionId = null;
         this.isHost = false;
+        this.messageCallback = () => {}
+
+        this.suppress = {
+            play: false,
+            pause: false,
+            seek: false
+        }
     }
 
-    async initialize(isInitiator, videoPlayer) {
+    initialize(isInitiator, videoPlayer) {
         this.videoPlayer = videoPlayer;
+        console.log("Sync manager video element: ", videoPlayer)
         
         // Get current session info from background
-        const response = await chrome.runtime.sendMessage({
-            type: 'GET_SESSION_INFO'
-        });
+        this.sessionId = p2p.sessionId;
+        this.isHost = true;
 
-        if (response.success) {
-            this.sessionId = response.session.id;
-            this.isHost = response.session.isHost;
-        }
-
-        this.webrtc.initializeConnection(isInitiator);
-        this.setupMessageHandling();
+        // this.webrtc.initializeConnection(isInitiator);
         this.setupVideoListeners();
     }
 
-    async createSession(platform) {
-        const response = await chrome.runtime.sendMessage({
-            type: 'CREATE_SESSION',
-            data: { platform }
-        });
-
-        if (response.success) {
-            this.sessionId = response.sessionId;
-            this.isHost = true;
-            return this.sessionId;
-        }
-        throw new Error('Failed to create session');
+    async sendMessage(message) {
+        p2p.sendToPeer(message)
     }
 
-    async joinSession(sessionId) {
-        const response = await chrome.runtime.sendMessage({
-            type: 'JOIN_SESSION',
-            data: { sessionId }
-        });
+    // setupMessageHandling() {
+    //     // console.log("need to implement this")
 
-        if (response.success) {
-            this.sessionId = sessionId;
-            this.isHost = false;
-            return true;
-        }
-        throw new Error('Failed to join session');
-    }
-
-    async endSession() {
-        if (this.isHost && this.sessionId) {
-            await chrome.runtime.sendMessage({
-                type: 'END_SESSION'
-            });
-            this.sessionId = null;
-            this.isHost = false;
-        }
-    }
-
-    setupMessageHandling() {
-        this.webrtc.setMessageCallback((message) => {
-            if (message.type === 'videoState') {
-                this.handleVideoStateChange(message);
-            }
-        });
-    }
+    //     // this.webrtc.setMessageCallback((message) => {
+    //     //     if (message.type === 'videoState') {
+    //     //         this.handleVideoStateChange(message);
+    //     //     }
+    //     // });
+    // }
 
     setupVideoListeners() {
         this.videoPlayer.addEventListener('play', () => {
-            this.webrtc.sendVideoState('play', this.videoPlayer.currentTime);
+            if(this.suppress.play) {
+                this.suppress.play = false;
+                return;
+            }
+            p2p.sendToPeer({
+                type: 'videoState',
+                action: 'play',
+                timestamp: this.videoPlayer.currentTime
+            });
         });
 
         this.videoPlayer.addEventListener('pause', () => {
-            this.webrtc.sendVideoState('pause', this.videoPlayer.currentTime);
+            if(this.suppress.pause) {
+                this.suppress.pause = false;
+                return;
+            }
+            p2p.sendToPeer({
+                type: 'videoState',
+                action: 'pause',
+                timestamp: this.videoPlayer.currentTime
+            });
         });
 
         this.videoPlayer.addEventListener('seeked', () => {
-            this.webrtc.sendVideoState('seek', this.videoPlayer.currentTime);
+            if(this.suppress.seek) {
+                this.suppress.seek = false;
+                return;
+            }
+            p2p.sendToPeer({
+                type: 'videoState',
+                action: 'seek',
+                timestamp: this.videoPlayer.currentTime
+            });
         });
     }
+
+    setMessageCallback(callback) {
+        this.messageCallback = callback
+    }
+
 
     handleVideoStateChange(message) {
         const { action, timestamp } = message;
         
         switch (action) {
             case 'play':
+                this.suppress.play = true
                 if (Math.abs(this.videoPlayer.currentTime - timestamp) > this.syncThreshold / 1000) {
                     this.videoPlayer.currentTime = timestamp;
                 }
@@ -99,58 +96,15 @@ class SyncManager {
                 break;
             
             case 'pause':
+                this.suppress.pause = true
                 this.videoPlayer.pause();
                 break;
             
             case 'seek':
+                this.suppress.seek = true
                 this.videoPlayer.currentTime = timestamp;
                 break;
         }
     }
-
-    // Methods for connection establishment
-    async createConnection() {
-        const offer = await this.webrtc.createOffer();
-        return offer;
-    }
-
-    async joinConnection(offer) {
-        const answer = await this.webrtc.handleOffer(offer);
-        return answer;
-    }
-
-    async completeConnection(answer) {
-        await this.webrtc.handleAnswer(answer);
-    }
-
-    handleIceCandidate(candidate) {
-        this.webrtc.addIceCandidate(candidate);
-    }
-
-    async createSession() {
-        const offer = await this.createConnection();
-        this.sessionId = this.generateSessionId();
-        const sessionData = {
-            offer,
-            sessionId: this.sessionId
-        };
-        return btoa(JSON.stringify(sessionData));
-    }
-
-    async joinSession(sessionString) {
-        try {
-            const sessionData = JSON.parse(atob(sessionString));
-            this.sessionId = sessionData.sessionId;
-            const answer = await this.joinConnection(sessionData.offer);
-            return btoa(JSON.stringify({ answer, sessionId: this.sessionId }));
-        } catch (error) {
-            throw new Error('Invalid session data');
-        }
-    }
-
-    generateSessionId() {
-        return Math.random().toString(36).substring(2, 15);
-    }
 }
 
-export default SyncManager;

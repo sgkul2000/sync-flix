@@ -4,83 +4,136 @@ class P2PService {
         this.dataChannel = null;
         this.isHost = false;
         this.sessionId = null;
-        this.setupMessageHandlers();
+        // this.setupPeerConnectionHandlers();
+        this.setupMessageListeners()
+        this.notificationService = new NotificationService();
+
+        chrome.storage.local.get(["peerid"]).then((result) => {
+            console.log("Peer id loaded: ", result.peerid)
+            this.createSession(result.peerid || null)
+        }).catch(err => {
+            console.error("Failed to create connection", err)
+
+        })
     }
 
-    setupMessageHandlers() {
+    setupMessageListeners() {
+        console.log("setting up message listeneers")
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.type === 'SIGNAL') {
-                this.handleSignalingMessage(message.data);
+            console.log("Received message: ", message)
+            switch (message.type) {
+                case 'CREATE_SESSION':
+                    this.createSession(message.peerid, sendResponse);
+                    return true;
+                case 'JOIN_SESSION':
+                    this.joinSession(message.id, sendResponse);
+                    return true;
+                case 'GET_SESSION_INFO':
+                    this.getSessionInfo(sender, sendResponse);
+                    return true;
+                case 'LEAVE_SESSION':
+                    this.endSession(sendResponse);
+                    return true;
+                default:
+                    console.log('Unknown message type:', message.type);
+                    sendResponse({ success: false, error: 'Unknown message type' });
+                    return false;
             }
         });
     }
 
-    async createSession() {
-        this.isHost = true;
-        this.peerConnection = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        });
 
-        this.setupPeerConnectionHandlers();
-        this.dataChannel = this.peerConnection.createDataChannel('syncChannel');
-        this.setupDataChannelHandlers();
+    async createSession(sessionId, sendResponse) {
+        let self = this
+        return new Promise((resolve, reject) => {
+            this.isHost = true;
 
-        const offer = await this.peerConnection.createOffer();
-        await this.peerConnection.setLocalDescription(offer);
-
-        return {
-            offer: offer,
-            isHost: true
-        };
+            var peer = new Peer(sessionId);
+            console.log(sessionId)
+            peer.on('open', async (id) => {
+                console.log('My peer ID is: ' + id);
+                if(sendResponse) sendResponse(id)
+                // setConnection(peer)
+                self.sessionId = id
+                resolve({
+                    id: this.sessionId,
+                    isHost: true
+                })
+                peer.on("connection", (dataConnection) => {
+                    console.log("connected")
+                    self.dataChannel = dataConnection
+                    console.log("sending")
+                    self.setupPeerConnectionHandlers()
+                    console.log("sending")
+                    // chrome.runtime.sendMessage({
+                    //     type: 'VIDEO_UPDATE',
+                    //     data: {
+                    //         ...data,
+                    //         latency: Date.now() - data.timestamp
+                    //     }
+                    // });
+                    self.dataChannel.send("Hello!")
+                })
+                try {
+                    await chrome.storage.local.set({ "peerid": peer.id });
+                    self.peerConnection = peer
+                } catch(err) {
+                    console.error("Error occured while setting peer id in storage", err)
+                    reject("Error occured while setting peer id in storage: "+err)
+                }
+            }).on('error', (err) => {
+                console.error(err)
+                this.notificationService.error('Failed to create session: ', err);
+                reject('Failed to create session: '+err)
+            });
+        })
     }
 
-    async joinSession(sessionId, offer) {
+    getSessionInfo(sender, sendResponse) {
+        sendResponse({
+            id: this.sessionId,
+            isHost: true,
+            success: true
+        })
+    }
+
+    joinSession(sessionId, sendResponse) {
         this.isHost = false;
         this.sessionId = sessionId;
-        this.peerConnection = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
+        this.dataChannel = this.peerConnection.connect(sessionId)
+
+        this.setupPeerConnectionHandlers()
+
+        sendResponse({
+            id:this.sessionId,
+            isHost: false,
+            success: true
         });
+    }
 
-        this.setupPeerConnectionHandlers();
-
-        this.peerConnection.ondatachannel = (event) => {
-            this.dataChannel = event.channel;
-            this.setupDataChannelHandlers();
-        };
-
-        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await this.peerConnection.createAnswer();
-        await this.peerConnection.setLocalDescription(answer);
-
-        return {
-            answer: answer,
-            isHost: false
-        };
+    endSession(sendResponse) {
+        this.dataChannel.close();
+        this.cleanup();
+        sendResponse({
+            success: true
+        })
     }
 
     setupPeerConnectionHandlers() {
-        this.peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                chrome.runtime.sendMessage({
-                    type: 'SIGNAL',
-                    data: {
-                        type: 'ICE_CANDIDATE',
-                        candidate: event.candidate,
-                        sessionId: this.sessionId
-                    }
-                });
-            }
-        };
+        this.dataChannel.on("data", (data) => {
+            console.log("Received data from peer: ", JSON.parse(data))
+            this.handlePeerMessage(JSON.parse(data));
+        })
 
-        this.peerConnection.onconnectionstatechange = () => {
-            this.broadcastStatus(this.peerConnection.connectionState);
-        };
+        this.dataChannel.on("open", () => {
+            console.log("Data channel opened")
+            this.broadcastStatus("connected");
+        })
+
+        this.dataChannel.on("close", () => {
+            console.log("Data channel closed")
+            this.broadcastStatus("disconnected");
+        })
     }
 
     setupDataChannelHandlers() {
@@ -100,57 +153,20 @@ class P2PService {
         };
     }
 
-    handleSignalingMessage(data) {
-        switch (data.type) {
-            case 'OFFER':
-                this.handleOffer(data.offer);
-                break;
-            case 'ANSWER':
-                this.handleAnswer(data.answer);
-                break;
-            case 'ICE_CANDIDATE':
-                this.handleIceCandidate(data.candidate);
-                break;
-        }
-    }
-
-    async handleOffer(offer) {
-        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await this.peerConnection.createAnswer();
-        await this.peerConnection.setLocalDescription(answer);
-        
-        chrome.runtime.sendMessage({
-            type: 'SIGNAL',
-            data: {
-                type: 'ANSWER',
-                answer: answer,
-                sessionId: this.sessionId
-            }
-        });
-    }
-
-    async handleAnswer(answer) {
-        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    }
-
-    async handleIceCandidate(candidate) {
-        try {
-            await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (error) {
-            console.error('Error adding ICE candidate:', error);
-        }
-    }
-
     handlePeerMessage(message) {
         switch (message.type) {
             case 'VIDEO_SYNC':
                 this.handleVideoSync(message.data);
                 break;
-            case 'CHAT':
-                this.handleChat(message.data);
+            case 'chat':
+                chatManager.messageHandler(message);
+                break;
+            case 'videoState':
+                syncManager?.handleVideoStateChange(message);
                 break;
             default:
-                console.warn('Unknown message type:', message.type);
+                syncManager?.messageCallback(message)
+                console.warn('Unknown message type:', message);
         }
     }
 
@@ -172,7 +188,8 @@ class P2PService {
     }
 
     sendToPeer(message) {
-        if (this.dataChannel?.readyState === 'open') {
+        console.log("sending to peer: ", message)
+        if (this.dataChannel) {
             this.dataChannel.send(JSON.stringify(message));
         }
     }
@@ -186,12 +203,12 @@ class P2PService {
 
     cleanup() {
         this.dataChannel?.close();
-        this.peerConnection?.close();
         this.dataChannel = null;
-        this.peerConnection = null;
-        this.isHost = false;
-        this.sessionId = null;
     }
 }
 
-export default P2PService;
+var p2p
+p2p = new P2PService();
+console.log("p2p service created")
+
+// export default P2PService;

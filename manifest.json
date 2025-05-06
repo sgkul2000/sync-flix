@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "host_permissions": [
     "*://*.netflix.com/*",
@@ -29,7 +30,7 @@
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["src/js/platforms/youtube/youtube.js"],
+      "js": ["src/js/services/notificationService.js", "src/js/lib/peerjs.min.js", "src/js/services/p2pService.js", "src/js/services/syncManager.js", "src/js/services/chatManager.js", "src/js/platforms/base/VideoController.js", "src/js/platforms/youtube/YoutubeController.js", "src/js/platforms/youtube/youtube.js"],
       "run_at": "document_end",
       "type": "module"
     },
@@ -42,7 +43,9 @@
   ],
   "web_accessible_resources": [{
     "resources": [
-      "*.js"
+      "*.js",
+      "*.css",
+      "*.html"
     ],
     "matches": ["<all_urls>"]
   }]

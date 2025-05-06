@@ -1,13 +1,11 @@
-import YouTubeController from './YouTubeController.js';
-import SyncManager from '../../services/syncManager.js';
-import ChatManager from '../../services/chatManager.js';
-
 console.log('YouTube Sync Extension loaded');
+var syncManager;
+var chatManager
 async function initializeYouTubeSync() {
     const controller = new YouTubeController();
     await controller.initialize();
 
-    const syncManager = new SyncManager();
+    syncManager = new SyncManager();
 
     // Listen for background service messages
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -34,7 +32,7 @@ async function initializeYouTubeSync() {
 
     syncManager.initialize(false, controller.videoElement);
     
-    const chatManager = new ChatManager(syncManager);
+    chatManager = new ChatManager(syncManager);
     await chatManager.initialize();
 
     // Assign syncManager to controller for message sending
@@ -43,17 +41,8 @@ async function initializeYouTubeSync() {
     // Handle sync messages
     syncManager.setMessageCallback((message) => {
         switch (message.type) {
-            case 'quality':
-                controller.setQuality(message.value);
-                break;
-            case 'playbackSpeed':
-                controller.setPlaybackSpeed(message.value);
-                break;
             case 'subtitles':
                 controller.setSubtitleState(message.value);
-                break;
-            case 'volume':
-                controller.setVolume(message.value);
                 break;
         }
     });
@@ -79,16 +68,18 @@ async function initializeYouTubeSync() {
 
     // Handle YouTube's native player state changes
     document.addEventListener('yt-player-updated', () => {
-        if (controller.isPlaying()) {
-            controller.syncWithYouTubeUI(true);
-        } else {
-            controller.syncWithYouTubeUI(false);
-        }
+        console.log("YT Internal event caught", controller.isPlaying())
+        // if (controller.isPlaying()) {
+        //     controller.syncWithYouTubeUI(true);
+        // } else {
+        //     controller.syncWithYouTubeUI(false);
+        // }
     });
 
     // Add volume sync
     controller.videoElement.addEventListener('volumechange', () => {
         const volume = controller.getVolume();
+        console.log("volume changed: ", volume)
         syncManager.sendMessage({
             type: 'volume',
             value: volume

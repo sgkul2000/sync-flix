@@ -40,5 +40,3 @@ class VideoController {
             false;
     }
 }
-
-export default VideoController;

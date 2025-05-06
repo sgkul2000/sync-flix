@@ -1,36 +1,36 @@
-import P2PService from './src/js/services/p2pService.js';
+// import P2PService from './src/js/services/p2pService.js';
 
 class BackgroundService {
     constructor() {
-        this.p2pService = new P2PService();
+        // this.p2pService = new P2PService();
         this.activeSessions = new Map();
         this.setupMessageListeners();
     }
 
     setupMessageListeners() {
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            switch (message.type) {
-                case 'CREATE_SESSION':
-                    this.handleCreateSession(sender.tab?.id, message.data, sendResponse);
-                    return true;
-                case 'SIGNAL':
-                    this.handleSignal(message.data, sender.tab?.id);
-                    return true;
-                case 'JOIN_SESSION':
-                    this.handleJoinSession(sender.tab?.id, message.data, sendResponse);
-                    return true;
-                case 'END_SESSION':
-                    this.handleEndSession(sender.tab?.id, sendResponse);
-                    return true;
-                case 'GET_SESSION_INFO':
-                    this.handleGetSessionInfo(sender.tab?.id, sendResponse);
-                    return true;
-                default:
-                    console.log('Unknown message type:', message.type);
-                    sendResponse({ success: false, error: 'Unknown message type' });
-                    return false;
-            }
-        });
+        // chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        //     switch (message.type) {
+        //         // case 'CREATE_SESSION':
+        //         //     // this.handleCreateSession(sender.tab?.id, message.data, sendResponse);
+        //         //     return true;
+        //         case 'SIGNAL':
+        //             this.handleSignal(message.data, sender.tab?.id);
+        //             return true;
+        //         // case 'JOIN_SESSION':
+        //         //     this.handleJoinSession(sender.tab?.id, message.data, sendResponse);
+        //         //     return true;
+        //         // case 'END_SESSION':
+        //         //     this.handleEndSession(sender.tab?.id, sendResponse);
+        //         //     return true;
+        //         // case 'GET_SESSION_INFO':
+        //         //     this.handleGetSessionInfo(sender.tab?.id, sendResponse);
+        //         //     return true;
+        //         default:
+        //             console.log('Unknown message type:', message.type);
+        //             sendResponse({ success: false, error: 'Unknown message type' });
+        //             return false;
+        //     }
+        // });
     }
 
     // Session Management

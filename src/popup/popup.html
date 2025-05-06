@@ -16,10 +16,10 @@
             </div>
 
             <!-- Add inside active-session div, after session-info -->
-            <div class="participants-list">
+            <!-- <div class="participants-list">
                 <h3>Participants</h3>
                 <ul id="participantsList"></ul>
-            </div>
+            </div> -->
 
             <!-- Add at the bottom of container div -->
             <div id="toastContainer" class="toast-container"></div>
@@ -28,19 +28,35 @@
         <div class="main-content">
             <div class="no-session" id="noSessionView">
                 <div class="action-buttons">
-                    <button id="createSession" class="primary-button">Create Watch Party</button>
-                    <button id="joinSession" class="secondary-button">Join Watch Party</button>
+                    <input type="text" id="usernameInput" placeholder="Enter your name here">
+                    <!-- <button id="createSession" class="primary-button">Create Watch Party</button> -->
+                    <!-- <button id="joinSession" class="secondary-button">Join Watch Party</button> -->
                 </div>
+                <button id="saveUsername" class="secondary-button">Save name</button>
             </div>
 
             <div class="active-session hidden" id="activeSessionView">
                 <div class="session-info">
-                    <h2>Active Watch Party</h2>
-                    <p>Session ID: <span id="sessionId"></span></p>
-                    <p>Participants: <span id="participantCount">1</span></p>
+                    <h2>Watch Party</h2>
+                    <p>Your Session ID: <span class="sessionId" id="sessionId"></span></p>
+                    <!-- <p>Participants: <span id="participantCount">1</span></p> -->
                 </div>
-                <button id="copyInvite" class="secondary-button">Copy Invite Link</button>
-                <button id="leaveSession" class="danger-button">Leave Session</button>
+                <button id="copyInvite" class="secondary-button">Copy your id</button>
+                <button id="joinSession" class="primary-button">Join Watch Party</button>
+
+            </div>
+
+            <div class="active-session hidden" id="joinedSessionView">
+                <div class="session-info">
+                    <h2>Active Watch Party</h2>
+                    <p>Your Session ID: <span class="sessionId" id="sessionId"></span></p>
+                    <p>Partner's Session ID: <span id="counterSessionId"></span></p>
+                    <!-- <p>Participants: <span id="participantCount">1</span></p> -->
+                </div>
+                <button id="copyInvite" class="secondary-button">Copy your id</button>
+                <button id="leaveSession" class="primary-button">Leave Session</button>
+
+                <input type="text" placeholder="Enter your name here">
             </div>
 
             <div class="join-session hidden" id="joinSessionView">
@@ -59,6 +75,7 @@
         </div>
     </div>
     <script src="../js/lib/peerjs.min.js"></script>
+    <script src="../js/services/notificationService.js"></script>
     <script src="popup.js" type="module"></script>
 </body>
 </html>
