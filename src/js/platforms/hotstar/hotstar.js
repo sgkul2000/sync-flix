@@ -1,6 +1,4 @@
-import HotstarController from './hotstarcontroller.js';
-import SyncManager from '../../services/syncManager.js';
-import ChatManager from '../../services/chatManager.js';
+console.log("Hotstar Sync Extension loaded")
 var syncManager;
 var chatManager
 async function initializeHotstarSync() {
@@ -11,6 +9,7 @@ async function initializeHotstarSync() {
 
     // Listen for background service messages
 
+    console.log("here")
     syncManager.initialize(false, controller.videoElement);
     
     chatManager = new ChatManager(syncManager);

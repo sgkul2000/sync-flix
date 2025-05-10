@@ -100,5 +100,3 @@ class HotstarController {
         });
     }
 }
-
-export default HotstarController;

@@ -36,7 +36,7 @@
     },
     {
       "matches": ["*://*.hotstar.com/*"],
-      "js": ["./src/js/platforms/hotstar/hotstar.js"],
+      "js": ["src/js/services/notificationService.js", "src/js/lib/peerjs.min.js", "src/js/services/p2pService.js", "src/js/services/syncManager.js", "src/js/services/chatManager.js", "src/js/platforms/base/VideoController.js", "src/js/platforms/hotstar/HotstarController.js", "src/js/platforms/hotstar/hotstar.js"],
       "run_at": "document_end",
       "type": "module"
     }
